@@ -139,10 +139,15 @@ async function run() {
     app.patch('/plant/quantity/:id',verifyToken,async(req,res)=>{
       const id=req.params.id;
       const query={_id: new ObjectId(id)}
-      const{quantityUpdate}=req.body;
+      const{quantityUpdate,status}=req.body;
      
-      const updateDoc={
+   let updateDoc={
         $inc:{quantity: -quantityUpdate}
+      }
+      if(status==='increase'){
+       updateDoc={
+          $inc:{quantity: quantityUpdate}
+        }
       }
       const result=await plantsCollection.updateOne(query,updateDoc)
       res.send(result)
@@ -151,7 +156,7 @@ async function run() {
     // get order data 
     app.get('/order/:email',async(req,res)=>{
       const email=req.params.email;
-      console.log(email)
+    
       const query={"customerInfo.email":email}
       const result=await orderCollection.aggregate([
         {
