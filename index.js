@@ -107,7 +107,7 @@ async function run() {
     // plants collection
     app.post('/plant',async(req,res)=>{
       const plants=req.body;
-      const result=await plantsCollection.insertOne(plants)
+      const result=await plantsCollection.insertOne(plants,{role:'customer'})
       res.send(result)
     })
 
@@ -125,7 +125,21 @@ async function run() {
       res.send(result)
     })
 
-
+// manage user status
+app.patch('/users/:email',async(req,res)=>{
+  const email=req.params.email;
+  const query={email}
+  const user=await userCollection.findOne(query);
+  if(!user || user?.status ==='Requested' )
+    return res.status(404).send('You have already requested,Please wait untill response')
+  const updateDoc={
+    $set:{
+      status:'Requested'
+    }
+  }
+  const result=await userCollection.updateOne(query,updateDoc)
+  res.send(result)
+})
 
     // order related api
     app.post('/order',verifyToken,async(req,res)=>{
@@ -207,7 +221,7 @@ async function run() {
       const id=req.params.id;
       const query={_id: new ObjectId(id)}
       const order=await orderCollection.findOne(query)
-      if(order.status ==='delivered'){
+      if(order.status ==='Delivered'){
         return res.status(409).send('you cannot cancel because of this purcel havebeen delivered')
       }
       const result=await orderCollection.deleteOne(query)
