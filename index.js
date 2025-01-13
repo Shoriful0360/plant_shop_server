@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
 const morgan = require('morgan')
+const nodemailer = require("nodemailer");
 
 const port = process.env.PORT || 9000
 const app = express()
@@ -33,6 +34,43 @@ console.log('from verify tokes',token)
     }
     req.user = decoded
     next()
+  })
+}
+
+// send email using nodeMailer
+
+const sendEmail=(emailAddress,emailData)=>{
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // true for port 465, false for other ports
+    auth: {
+      user: process.env.NODEMAILER_USER,
+      pass: process.env.NODEMAILER_PASSWORD,
+    },
+  });
+  transporter.verify((error,success)=>{
+    if(error){
+      console.log(err)
+    }else{
+      console.log('server is ready',success)
+    }
+  })
+  // const{PlantId,price,quantity,}=emailData?.orderInfo
+  const mailBody={
+    from: '"Maddison Foo Koch 👻" <maddison53@ethereal.email>', // sender address
+    to: emailAddress, // list of receivers
+    subject: emailData?.Subject, // Subject line
+    html: emailData?.message, // html body
+  }
+
+  transporter.sendMail(mailBody,(error,info)=>{
+    if(error){
+      console.log(error)
+    }else{
+      console.log(info)
+      console.log('Email Sent:' + info?.response)
+    }
   })
 }
 
@@ -110,6 +148,7 @@ const verifySeller=async(req,res,next)=>{
 
     // user create and collection
     app.post('/user/:email',async(req,res)=>{
+      
       const email=req.params.email
       const user=req.body;
       const query={email}
@@ -275,6 +314,60 @@ app.patch('/seller_order/:id',verifyToken,verifySeller,async(req,res)=>{
       const orderInfo=req.body;
 
       const result=await orderCollection.insertOne(orderInfo)
+      if(result.insertedId){
+
+        // for customer message
+        sendEmail(orderInfo?.customerInfo?.email,{
+          Subject:'Hurray!',
+          message:`<div class="overflow-x-auto">
+  <table class="table">
+    <!-- head -->
+    <thead>
+      <tr>
+    
+        <th>PlantID</th>
+
+
+        <th>price</th>
+
+
+
+        <th>Quantity</th>
+
+        <th>Transaction Id</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- row 1 -->
+      <tr>
+     
+        <td>
+          ${orderInfo?.PlantId}
+        </td>
+        <td>
+          $${orderInfo?.price}
+        </td>
+        <td>
+       ${orderInfo?.quantity}
+        </td>
+        <td>
+        ${result?.insertedId}
+        </td>
+     
+      </tr>
+    
+    </tbody>
+  </table>
+</div>`
+        })
+
+        // for seller message
+        sendEmail(orderInfo?.seller,{
+          Subject:'Hurray!,You have an order process',
+          message:`Get the plant ready for:${orderInfo?.customerInfo?.name}`
+        })
+      }
+
       res.send(result)
     })
 
